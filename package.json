@@ -1,32 +1,31 @@
 {
-	"author": "justin wolcott",
-	"bin": {
-		"vomitorium": "./vomitorium.js"
-	},
-	"dependencies": {
-		"commander": "^12.1.0",
-		"cosmiconfig": "^9.0.0"
-	},
-	"description": "Traverse project structure and write file contents to a single output file",
-	"keywords": [
-		"traverse",
-		"project",
-		"output",
-		"llm",
-		"chatGpt",
-		"claude",
-		"code",
-		"review"
-	],
-	"license": "ISC",
-	"main": "vomitorium.js",
-	"name": "vomitorium",
-	"scripts": {
-		"install:bun": "npm -g install bun && bun upgrade",
-		"lint": "(which bun || npm run install:bun) && (bun --bun x xo --fix . ; bun --bun x @biomejs/biome check --reporter=summary --write --unsafe .)",
-		"start": "node vomitorium.js",
-		"test": "echo make-tests"
-	},
-	"type": "module",
-	"version": "2.0.0"
+  "author": "justin wolcott",
+  "bin": {
+    "vomitorium": "./vomitorium.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "cosmiconfig": "^9.0.0"
+  },
+  "description": "Traverse project structure and write file contents to a single output file",
+  "keywords": [
+    "traverse",
+    "project",
+    "output",
+    "llm",
+    "chatGpt",
+    "claude",
+    "code",
+    "review"
+  ],
+  "license": "ISC",
+  "main": "vomitorium.js",
+  "name": "vomitorium",
+  "scripts": {
+    "lint": "( which bun 2>&1 >/dev/null || ( npm -g install bun && bun upgrade ) ) && ( bun --bun x xo --fix . ; bun --bun x @biomejs/biome check --reporter=summary --write --unsafe . )",
+    "start": "( which bun 2>&1 >/dev/null || ( npm -g install bun && bun upgrade ) ) && bun vomitorium.js",
+    "test": "echo make-tests"
+  },
+  "type": "module",
+  "version": "2.0.0"
 }
