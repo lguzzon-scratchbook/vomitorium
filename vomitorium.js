@@ -8,38 +8,6 @@ import { cosmiconfigSync } from "cosmiconfig";
 
 const config = getConfig();
 
-if (config === null) {
-	throw new Error("Configuration is null");
-}
-
-if (typeof config.scan !== "string") {
-	throw new Error("Config 'scan' is not a string");
-}
-
-if (typeof config.include !== "object") {
-	throw new Error("Config 'include' is not an object");
-}
-
-if (typeof config.exclude !== "object") {
-	throw new Error("Config 'exclude' is not an object");
-}
-
-if (typeof config.extensions !== "object") {
-	throw new Error("Config 'extensions' is not an object");
-}
-
-if (typeof config.showExcluded !== "boolean") {
-	throw new Error("Config 'showExcluded' is not a boolean");
-}
-
-if (typeof config.showSkipped !== "boolean") {
-	throw new Error("Config 'showSkipped' is not a boolean");
-}
-
-if (typeof config.outputFile !== "string") {
-	throw new Error("Config 'outputFile' is not a string");
-}
-
 program
 	.option(
 		"--scan <dir>",
