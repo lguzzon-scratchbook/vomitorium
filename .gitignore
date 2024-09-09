@@ -15,3 +15,6 @@ bom.xml
 .vscode
 .idea
 package-lock.json
+lintLog.txt
+output.sick
+bun.lockb
