@@ -6,34 +6,40 @@ import process from "node:process";
 import { program } from "commander";
 import { cosmiconfigSync } from "cosmiconfig";
 
-/**
- * Cosmiconfig explorer for 'vomitorium' configuration.
- * @type {import('cosmiconfig').ExplorerSync}
- */
-const explorer = cosmiconfigSync("vomitorium");
+const config = getConfig();
 
-/**
- * Default configuration for the script.
- * @type {Object}
- */
-const defaultConfig = {
-	scan: ".",
-	include: [],
-	exclude: ["node_modules", ".git", "dist", "build"],
-	excludeFiles: ["package.json", "package-lock.json"],
-	extensions: [".js", ".ts", ".json"],
-	showExcluded: true,
-	showSkipped: true,
-	outputFile: "output.sick",
-};
+if (config === null) {
+	throw new Error("Configuration is null");
+}
 
-// Read config from file or use default
-const configFile = explorer.search();
-const config = configFile
-	? { ...defaultConfig, ...configFile.config }
-	: defaultConfig;
+if (typeof config.scan !== "string") {
+	throw new Error("Config 'scan' is not a string");
+}
 
-// Command-line options
+if (typeof config.include !== "object") {
+	throw new Error("Config 'include' is not an object");
+}
+
+if (typeof config.exclude !== "object") {
+	throw new Error("Config 'exclude' is not an object");
+}
+
+if (typeof config.extensions !== "object") {
+	throw new Error("Config 'extensions' is not an object");
+}
+
+if (typeof config.showExcluded !== "boolean") {
+	throw new Error("Config 'showExcluded' is not a boolean");
+}
+
+if (typeof config.showSkipped !== "boolean") {
+	throw new Error("Config 'showSkipped' is not a boolean");
+}
+
+if (typeof config.outputFile !== "string") {
+	throw new Error("Config 'outputFile' is not a string");
+}
+
 program
 	.option(
 		"--scan <dir>",
@@ -67,26 +73,12 @@ program
 	)
 	.option("--output <file>", "Specify the output file name", config.outputFile);
 
-program.addHelpText(
-	"after",
-	`
-  Examples:
-    $ vomitorium --scan ./myproject --include src,tests
-    $ vomitorium --exclude node_modules,dist,package.json --extensions .js,.ts
-    $ vomitorium --scan /path/to/project --show-excluded --show-skipped
-    $ vomitorium --output my-custom-output.txt
-  `,
-);
-
 program.parse(process.argv);
 
 const options = program.opts();
-const scanDirectory = options.scan || config.scan;
+const inputDirectory = options.scan || config.scan;
 const includeDirectories = options.include || config.include;
-const excludePatterns = options.exclude || [
-	...config.exclude,
-	...config.excludeFiles,
-];
+const excludePatterns = options.exclude || config.exclude;
 const includeExtensions = options.extensions || config.extensions;
 const showExcluded =
 	options.showExcluded === undefined
@@ -96,11 +88,49 @@ const showSkipped =
 	options.showSkipped === undefined ? config.showSkipped : options.showSkipped;
 const outputFile = options.output || config.outputFile;
 
-/**
- * Checks if a file should be excluded based on the excludePatterns.
- * @param {string} filePath - The path of the file to check.
- * @returns {boolean} True if the file should be excluded, false otherwise.
- */
+async function main() {
+	const outputFilePath = path.join(process.cwd(), outputFile);
+
+	try {
+		await fs.access(inputDirectory);
+	} catch {
+		console.error(
+			`Error: Directory "${inputDirectory}" does not exist or is inaccessible.`,
+		);
+		process.exit(1);
+	}
+
+	await fs.writeFile(outputFilePath, "");
+
+	console.log(`Traversing directory: ${inputDirectory}`);
+
+	await traverseDirectoryRecursively(inputDirectory, outputFilePath);
+	console.log(`Done. All file contents written to: ${outputFilePath}`);
+}
+
+try {
+	await main();
+} catch (error) {
+	console.erro(error);
+}
+
+function getConfig() {
+	const defaultConfig = {
+		scan: ".",
+		include: [],
+		exclude: ["node_modules", ".git", "dist", "build"],
+		extensions: [".js", ".ts", ".json"],
+		showExcluded: true,
+		showSkipped: true,
+		outputFile: "output.sick",
+	};
+
+	const configFile = cosmiconfigSync("vomitorium").search();
+	return configFile
+		? { ...defaultConfig, ...configFile.config }
+		: defaultConfig;
+}
+
 function isExcluded(filePath) {
 	const relativeFilePath = path.relative(process.cwd(), filePath);
 	return excludePatterns.some(
@@ -110,21 +140,15 @@ function isExcluded(filePath) {
 	);
 }
 
-/**
- * Recursively traverses a directory and processes its files.
- * @param {string} rootDirectoryPath - The path of the directory to traverse.
- * @param {string} outputFilePath - The path of the output file.
- * @returns {Promise<void>}
- */
-async function traverseDirectoryRecursively(rootDirectoryPath, outputFilePath) {
+async function traverseDirectoryRecursively(directoryPath, outputFilePath) {
 	try {
-		const directoryEntries = await fs.readdir(rootDirectoryPath, {
+		const directoryEntries = await fs.readdir(directoryPath, {
 			withFileTypes: true,
 		});
 
 		await Promise.all(
 			directoryEntries.map(async (entry) => {
-				const entryPath = path.join(rootDirectoryPath, entry.name);
+				const entryPath = path.join(directoryPath, entry.name);
 
 				if (isExcluded(entryPath)) {
 					if (showExcluded) {
@@ -137,7 +161,9 @@ async function traverseDirectoryRecursively(rootDirectoryPath, outputFilePath) {
 				if (entry.isDirectory()) {
 					if (
 						includeDirectories.length === 0 ||
-						includeDirectories.some((dir) => entryPath.includes(dir))
+						includeDirectories.some((includeDirectory) =>
+							entryPath.includes(includeDirectory),
+						)
 					) {
 						await traverseDirectoryRecursively(entryPath, outputFilePath);
 					}
@@ -163,16 +189,10 @@ async function traverseDirectoryRecursively(rootDirectoryPath, outputFilePath) {
 			}),
 		);
 	} catch (error) {
-		console.error(`Error traversing directory ${rootDirectoryPath}:`, error);
+		console.error(`Error traversing directory ${directoryPath}:`, error);
 	}
 }
 
-/**
- * Appends the contents of a single file to the output file.
- * @param {string} sourceFilePath - The path of the file to append.
- * @param {string} outputFilePath - The path of the output file.
- * @returns {Promise<void>}
- */
 async function appendFileToOutput(sourceFilePath, outputFilePath) {
 	try {
 		const fileContent = await fs.readFile(sourceFilePath, "utf8");
@@ -187,13 +207,6 @@ async function appendFileToOutput(sourceFilePath, outputFilePath) {
 	}
 }
 
-/**
- * Logs a skipped file to the output file.
- * @param {string} filePath - The path of the skipped file.
- * @param {string} outputFilePath - The path of the output file.
- * @param {string} reason - The reason for skipping the file.
- * @returns {Promise<void>}
- */
 async function logSkippedFile(filePath, outputFilePath, reason) {
 	const relativePath = path.relative(process.cwd(), filePath);
 	await fs.appendFile(
@@ -202,30 +215,3 @@ async function logSkippedFile(filePath, outputFilePath, reason) {
 	);
 	console.log(`Skipped file: ${relativePath} (${reason})`);
 }
-
-/**
- * Main function to execute the script.
- * @returns {Promise<void>}
- */
-async function main() {
-	const targetDirectory = path.resolve(scanDirectory);
-	const outputFilePath = path.join(process.cwd(), outputFile);
-
-	try {
-		await fs.access(targetDirectory);
-	} catch {
-		console.error(
-			`Error: Directory "${targetDirectory}" does not exist or is inaccessible.`,
-		);
-		process.exit(1);
-	}
-
-	await fs.writeFile(outputFilePath, "");
-
-	console.log(`Traversing directory: ${targetDirectory}`);
-
-	await traverseDirectoryRecursively(targetDirectory, outputFilePath);
-	console.log(`Done. All file contents written to: ${outputFilePath}`);
-}
-
-main().catch(console.error);
