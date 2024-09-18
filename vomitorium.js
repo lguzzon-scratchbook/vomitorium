@@ -87,7 +87,7 @@ function getConfig() {
     scan: '.',
     include: [],
     exclude: ['node_modules', '.git', 'dist', 'build'],
-    extensions: ['.js', '.ts', '.json'],
+    extensions: ['.js', '.ts', '.json', '.txt', '.text', '.md'],
     showExcluded: true,
     showSkipped: true,
     outputFile: 'output.sick'
